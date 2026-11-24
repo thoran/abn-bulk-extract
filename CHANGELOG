@@ -1,0 +1,9 @@
+# abn-bulk-extract/CHANGELOG
+
+## 20261124
+
+0.0.0: Fetch, compare and parse the weekly ABN bulk extract.
+
+1. + bin/abn-bulk-extract: + abr. + -c/--compare, -d/--data-directory, -n/--dry-run, -p/--parse, -q/--quiet, -h/--help. Built on data_gov_au 0.3.0's DataGovAu::ABR. Its config file is read, and the switches taken over it, a setting left blank or a switch left off leaving what lies beneath it standing. Only the settings DataGovAu::ABR::Config takes are passed to it. A file which is not a mapping stops the run. The data directory defaults to $XDG_DATA_HOME/abn-bulk-extract. A dry run reports what it would compare, whether asked for alone or after a fetch.
+2. + test/abn-bulk-extract_test.rb, test/helper.rb, test/fixtures/20261020Public01.xml: 13 runs.
+3. + README.md, Gemfile, LICENSE.
