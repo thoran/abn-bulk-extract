@@ -2,6 +2,13 @@
 
 ## 20261125
 
+0.2.0: Every run is logged.
+
+1. ~ bin/abn-bulk-extract: + logger(), which writes log.txt in the log directory, a new file each day. + log_directory(), from the config file's log_directory, the program's own setting, or + default_log_directory(), $XDG_STATE_HOME/abn-bulk-extract. + LOG_FILENAME.
+2. ~ bin/abn-bulk-extract: + command_line(), + log_start(): The run is logged as it was started, once the switches are read, so that -h logs nothing. ~ report(): Each line is logged, under -q too. ~ main(): finished is logged at the end of a run. ~ report_failure(): The failure is logged as an error where the log is open, which it is not where the config file can't be read. + log_unexpected(): Any other error is logged with its backtrace and raised again.
+3. ~ test/abn-bulk-extract_test.rb: run_under() sets XDG_STATE_HOME. A quiet run logs its report and that it finished; the log is beneath XDG_STATE_HOME, beneath ~/.local/state where that is unset, or the config file's log_directory; a failure is logged as an error; -h logs nothing: 19 runs.
+4. ~ README.md: + Log. The config file's log_directory is given.
+
 0.1.0: /DataGovAu::ABR/DataGovAu::AbnBulkExtract/, /data_directory/directory/
 
 1. ~ bin/abn-bulk-extract: Built on data_gov_au 0.4.0's DataGovAu::AbnBulkExtract. /data_directory/directory/, /-d, --data-directory/-d, --directory/, /default_data_directory()/default_directory()/: The setting names the extract's own directory, with releases/ directly beneath it, as 0.4.0's Config takes it.

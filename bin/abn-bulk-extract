@@ -3,6 +3,8 @@
 
 require 'data_gov_au'
 require 'DataGovAu/AbnBulkExtract'
+require 'fileutils'
+require 'logger'
 require 'switches.rb'
 require 'yaml'
 
@@ -10,6 +12,7 @@ BYTES_PER_KILOBYTE = 1024
 BYTES_PER_MEGABYTE = 1_048_576
 CONFIG_PATH = '~/.config/abn-bulk-extract/config.yaml'
 DATASETS = ['abr']
+LOG_FILENAME = 'log.txt'
 SECONDS_PER_MINUTE = 60
 SETTINGS = [:api_url, :directory, :user_agent]
 
@@ -89,6 +92,33 @@ def config
   @config ||= DataGovAu::AbnBulkExtract::Config.new(**settings)
 end
 
+def default_log_directory
+  state_home = ENV['XDG_STATE_HOME'].to_s
+  File.join(state_home.empty? ? File.join('~', '.local', 'state') : state_home, 'abn-bulk-extract')
+end
+
+# The program's own setting, and so not among those passed to the library.
+def log_directory
+  @log_directory ||= File.expand_path(stored_settings[:log_directory] || default_log_directory)
+end
+
+# Every run is logged, quiet or not, so that a scheduled run which reported nothing still leaves a record of having run. A new file each day.
+def logger
+  @logger ||= (
+    FileUtils.mkdir_p(log_directory)
+    Logger.new(File.join(log_directory, LOG_FILENAME), 'daily')
+  )
+end
+
+# Read before the switches take theirs out of ARGV.
+def command_line
+  @command_line ||= (['abn-bulk-extract'] + ARGV).join(' ')
+end
+
+def log_start
+  logger.info("started: #{command_line}")
+end
+
 def fetch
   @fetch ||= DataGovAu::AbnBulkExtract::Fetch.new(config)
 end
@@ -104,6 +134,7 @@ end
 
 def report(message)
   puts message unless switches.quiet?
+  logger.info(message)
 end
 
 def reported_size(size)
@@ -209,9 +240,15 @@ def report_not_whole(members)
   report_failure("fewer records than promised, or an error reported, in #{members.join(', ')}")
 end
 
+# Logged only where the log is already open: a config file which cannot be read cannot say where the log goes.
 def report_failure(message)
   $stderr.puts "abn-bulk-extract: #{message}"
+  @logger.error(message) if @logger
   exit 1
+end
+
+def log_unexpected(error)
+  logger.error("#{error.class}: #{error.message}\n#{error.backtrace&.join("\n")}")
 end
 
 def check_dataset
@@ -221,7 +258,9 @@ end
 
 def main
   $stdout.sync = true
+  command_line
   switches
+  log_start
   check_dataset
   if switches.parse?
     parse_release
@@ -230,8 +269,12 @@ def main
   else
     run_stages
   end
+  logger.info('finished')
 rescue DataGovAu::Error => error
   report_failure(error.message)
+rescue StandardError => error
+  log_unexpected(error) if @logger
+  raise
 end
 
 main

@@ -99,10 +99,11 @@ It reads `~/.config/abn-bulk-extract/config.yaml`, where present, and its switch
 
 ```yaml
 directory: /srv/abn-bulk-extract
+log_directory: /var/log/abn-bulk-extract
 user_agent: abn-bulk-extract
 ```
 
-`directory`, `api_url` and `user_agent` are passed to `DataGovAu::AbnBulkExtract::Config`; anything else in the file is ignored.
+`directory`, `api_url` and `user_agent` are passed to `DataGovAu::AbnBulkExtract::Config`. `log_directory` is the program's own, under Log below. Anything else in the file is ignored.
 
 Before 0.1.0 the setting was `data_directory`, the directory beneath which `abr/` held the extract. A file still holding it stops the run, saying so, rather than the releases being looked for where they aren't and retrieved again. Set `directory` to what was `data_directory`'s `abr/`.
 
@@ -122,6 +123,20 @@ Before 0.1.0 the setting was `data_directory`, the directory beneath which `abr/
       ...
       delta.zst
       frame.json.zst
+```
+
+### Log
+
+Every run is logged, `--quiet` or not, so a scheduled run which printed nothing still leaves a record of having run. The log holds the command line it was started with, each line of its report, and `finished` once the run is done; a run which stops logs why as an error instead, as does anything unexpected, with its backtrace. `--help` logs nothing.
+
+It's `log.txt` in `$XDG_STATE_HOME/abn-bulk-extract` unless `log_directory` names another, or in `~/.local/state/abn-bulk-extract` where `XDG_STATE_HOME` is unset, and is started afresh each day, the day before's kept as `log.txt.YYYYMMDD`. A config file which can't be read can't say where the log goes, so that failure goes to standard error alone.
+
+```
+I, [2026-11-26T10:05:01.338529 #48211]  INFO -- : started: abn-bulk-extract abr -q
+I, [2026-11-26T10:05:02.904120 #48211]  INFO -- : release:   20261125
+...
+I, [2026-11-26T10:05:02.910733 #48211]  INFO -- : nothing to compare
+I, [2026-11-26T10:05:02.910790 #48211]  INFO -- : finished
 ```
 
 
