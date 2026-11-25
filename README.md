@@ -2,7 +2,7 @@
 
 ## Description
 
-Fetches the Australian Business Register's weekly ABN bulk extract from data.gov.au, keeps each release after the first as its changes from the one before, and reads the records of the newest release held. It's a command line for the [data_gov_au](https://rubygems.org/gems/data_gov_au) gem's `DataGovAu::ABR`.
+Fetches the Australian Business Register's weekly ABN bulk extract from data.gov.au, keeps each release after the first as its changes from the one before, and reads the records of the newest release held. It's a command line for the [data_gov_au](https://rubygems.org/gems/data_gov_au) gem's `DataGovAu::AbnBulkExtract`.
 
 data.gov.au publishes the current release alone and overwrites it in place each Tuesday, so a week not fetched is gone for good. This is the thing to run each week from a scheduler.
 
@@ -86,7 +86,7 @@ total:     20631294 records in 5 m 48 s
 
 ```
   -c, --compare             Set each release held against the one before it, retrieving nothing
-  -d, --data-directory DIR  Where the releases are kept (default: $XDG_DATA_HOME/abn-bulk-extract)
+  -d, --directory DIR       Where the extract is kept (default: $XDG_DATA_HOME/abn-bulk-extract)
   -n, --dry-run             Report what would be retrieved and compared without doing either
   -p, --parse               Parse the newest release held, retrieving nothing
   -q, --quiet               Report nothing but errors
@@ -95,32 +95,33 @@ total:     20631294 records in 5 m 48 s
 
 ### Configuration
 
-It reads `~/.config/abn-bulk-extract/config.yaml`, where present, and its switches override that. A switch left off, or a setting left blank, leaves what lies beneath it standing; a file which is not a mapping stops the run. The data directory is `$XDG_DATA_HOME/abn-bulk-extract` unless set, or `~/.local/share/abn-bulk-extract` where `XDG_DATA_HOME` is unset.
+It reads `~/.config/abn-bulk-extract/config.yaml`, where present, and its switches override that. A switch left off, or a setting left blank, leaves what lies beneath it standing; a file which is not a mapping stops the run. The directory is the extract's own, holding `releases/`: `$XDG_DATA_HOME/abn-bulk-extract` unless set, or `~/.local/share/abn-bulk-extract` where `XDG_DATA_HOME` is unset.
 
 ```yaml
-data_directory: /srv/abn-bulk-extract
+directory: /srv/abn-bulk-extract
 user_agent: abn-bulk-extract
 ```
 
-`data_directory`, `api_url` and `user_agent` are passed to `DataGovAu::ABR::Config`; anything else in the file is ignored.
+`directory`, `api_url` and `user_agent` are passed to `DataGovAu::AbnBulkExtract::Config`; anything else in the file is ignored.
+
+Before 0.1.0 the setting was `data_directory`, the directory beneath which `abr/` held the extract. A file still holding it stops the run, saying so, rather than the releases being looked for where they aren't and retrieved again. Set `directory` to what was `data_directory`'s `abr/`.
 
 ### On disk
 
 ```
 ~/.local/share/abn-bulk-extract/
-  abr/
-    releases/
-      20261028/
-        public_split_1_10.zip
-        public_split_11_20.zip
-        bulkextract.xsd
-        abnlookupbulkextractreadme.pdf
-        abn-bulk-extract-resources.csv
-        catalogue.json
-      20261104/
-        ...
-        delta.zst
-        frame.json.zst
+  releases/
+    20261028/
+      public_split_1_10.zip
+      public_split_11_20.zip
+      bulkextract.xsd
+      abnlookupbulkextractreadme.pdf
+      abn-bulk-extract-resources.csv
+      catalogue.json
+    20261104/
+      ...
+      delta.zst
+      frame.json.zst
 ```
 
 

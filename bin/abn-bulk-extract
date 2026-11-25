@@ -2,7 +2,7 @@
 # abn-bulk-extract
 
 require 'data_gov_au'
-require 'DataGovAu/ABR'
+require 'DataGovAu/AbnBulkExtract'
 require 'switches.rb'
 require 'yaml'
 
@@ -11,7 +11,7 @@ BYTES_PER_MEGABYTE = 1_048_576
 CONFIG_PATH = '~/.config/abn-bulk-extract/config.yaml'
 DATASETS = ['abr']
 SECONDS_PER_MINUTE = 60
-SETTINGS = [:api_url, :data_directory, :user_agent]
+SETTINGS = [:api_url, :directory, :user_agent]
 
 def usage
   puts "abn-bulk-extract - The Australian Business Register's weekly ABN bulk extract, from data.gov.au: fetch, compare and parse."
@@ -23,7 +23,7 @@ def usage
   puts
   puts "Options:"
   puts "  -c, --compare             Set each release held against the one before it, retrieving nothing"
-  puts "  -d, --data-directory DIR  Where the releases are kept (default: $XDG_DATA_HOME/abn-bulk-extract)"
+  puts "  -d, --directory DIR       Where the extract is kept (default: $XDG_DATA_HOME/abn-bulk-extract)"
   puts "  -n, --dry-run             Report what would be retrieved and compared without doing either"
   puts "  -p, --parse               Parse the newest release held, retrieving nothing"
   puts "  -q, --quiet               Report nothing but errors"
@@ -33,7 +33,7 @@ end
 def switches
   @switches ||= Switches.new do |s|
     s.boolean(:c, :compare){'Set each release held against the one before it, retrieving nothing'}
-    s.optional(:d, :data_directory){'Where the releases are kept (default: $XDG_DATA_HOME/abn-bulk-extract)'}
+    s.optional(:d, :directory){'Where the extract is kept (default: $XDG_DATA_HOME/abn-bulk-extract)'}
     s.boolean(:n, :dry_run){'Report what would be retrieved and compared without doing either'}
     s.boolean(:p, :parse){'Parse the newest release held, retrieving nothing'}
     s.boolean(:q, :quiet){'Report nothing but errors'}
@@ -49,7 +49,8 @@ def dataset
   @dataset ||= ARGV.first
 end
 
-def default_data_directory
+# The extract's own directory, holding releases/.
+def default_directory
   data_home = ENV['XDG_DATA_HOME'].to_s
   File.join(data_home.empty? ? File.join('~', '.local', 'share') : data_home, 'abn-bulk-extract')
 end
@@ -66,32 +67,38 @@ end
 def read_settings
   settings = YAML.safe_load_file(config_path) || {}
   report_failure("#{config_path} does not hold a mapping") unless settings.is_a?(Hash)
-  settings.transform_keys(&:to_sym)
+  settings.transform_keys(&:to_sym).tap{|symbolised| check_retired_settings(symbolised)}
+end
+
+# data_directory named a directory beneath which abr/ held the extract, where directory names the extract's own. A file still holding it stops the run, rather than the releases being looked for, and retrieved again, where they are not.
+def check_retired_settings(settings)
+  return unless settings.key?(:data_directory)
+  report_failure("#{config_path} holds data_directory, which is no longer read: directory names the extract's own directory, the one holding releases/")
 end
 
 def switched_settings
-  {data_directory: switches.data_directory}
+  {directory: switches.directory}
 end
 
 # A setting left blank or a switch left off is nil, and leaves what lies beneath it standing. Only the settings the library takes are passed in.
 def settings
-  @settings ||= {data_directory: default_data_directory}.merge(stored_settings.compact, switched_settings.compact).slice(*SETTINGS)
+  @settings ||= {directory: default_directory}.merge(stored_settings.compact, switched_settings.compact).slice(*SETTINGS)
 end
 
 def config
-  @config ||= DataGovAu::ABR::Config.new(**settings)
+  @config ||= DataGovAu::AbnBulkExtract::Config.new(**settings)
 end
 
 def fetch
-  @fetch ||= DataGovAu::ABR::Fetch.new(config)
+  @fetch ||= DataGovAu::AbnBulkExtract::Fetch.new(config)
 end
 
 # The newest release on disk, which is read from the directory names and so costs nothing: parsing goes nowhere near the network.
 def held_release
   @held_release ||= (
-    date = DataGovAu::ABR::Release.dates_held(config).first
-    raise DataGovAu::ABR::NothingToParse, "no release is held in #{config.releases_directory}" unless date
-    DataGovAu::ABR::Release.new(config, date)
+    date = DataGovAu::AbnBulkExtract::Release.dates_held(config).first
+    raise DataGovAu::AbnBulkExtract::NothingToParse, "no release is held in #{config.releases_directory}" unless date
+    DataGovAu::AbnBulkExtract::Release.new(config, date)
   )
 end
 
@@ -136,7 +143,7 @@ end
 
 # Read from what is on disk, and so after any fetch in the same run.
 def comparisons
-  @comparisons ||= DataGovAu::ABR::Comparison.pending(config)
+  @comparisons ||= DataGovAu::AbnBulkExtract::Comparison.pending(config)
 end
 
 def now
@@ -182,7 +189,7 @@ def parse_release
   started = now
   records = 0
   not_whole = []
-  DataGovAu::ABR::Extract.new(held_release).each_file do |member, parser|
+  DataGovAu::AbnBulkExtract::Extract.new(held_release).each_file do |member, parser|
     parser.each_record{}
     records += parser.records_parsed
     report(file_report(member, parser))

@@ -34,11 +34,20 @@ describe "bin/abn-bulk-extract" do
         _(run_under(home, '-n')[1]).must_include '127.0.0.1:9'
       end
     end
+
+    it "stops the run where it holds data_directory, naming directory in its place" do
+      Dir.mktmpdir do |home|
+        write_config(home, "data_directory: #{home}/stored\n")
+        _, error, status = run_under(home, '-p')
+        _(status.exitstatus).must_equal 1
+        _(error).must_include 'holds data_directory, which is no longer read: directory names'
+      end
+    end
   end
 
   describe "parsing" do
     def release_under(home, text = File.read(fixture_path('20261020Public01.xml')))
-      release = DataGovAu::ABR::Release.new(config_in(File.join(home, '.local', 'share', 'abn-bulk-extract')), Date.new(2026, 10, 20))
+      release = DataGovAu::AbnBulkExtract::Release.new(config_in(File.join(home, '.local', 'share', 'abn-bulk-extract')), Date.new(2026, 10, 20))
       release.create_directory
       Zip::File.open(File.join(release.directory, 'public_split_1_10.zip'), create: true){|zip| zip.get_output_stream('20261020Public01.xml'){|io| io.write(text)}}
       release
@@ -87,9 +96,9 @@ describe "bin/abn-bulk-extract" do
   end
 
   # Parsing with nothing held fails naming the releases directory, and so shows where the settings put it without going to the catalogue.
-  describe "the data directory" do
+  describe "the extract's directory" do
     def releases_under(directory)
-      File.join(directory, 'abr', 'releases')
+      File.join(directory, 'releases')
     end
 
     it "is beneath XDG_DATA_HOME where nothing else names one" do
@@ -108,21 +117,21 @@ describe "bin/abn-bulk-extract" do
 
     it "is the config file's over the default" do
       Dir.mktmpdir do |home|
-        write_config(home, "data_directory: #{home}/stored\n")
+        write_config(home, "directory: #{home}/stored\n")
         _(run_under(home, '-p')[1]).must_include releases_under(File.join(home, 'stored'))
       end
     end
 
     it "is the switch's over the config file" do
       Dir.mktmpdir do |home|
-        write_config(home, "data_directory: #{home}/stored\n")
+        write_config(home, "directory: #{home}/stored\n")
         _(run_under(home, '-p', '-d', File.join(home, 'switched'))[1]).must_include releases_under(File.join(home, 'switched'))
       end
     end
 
     it "stays the default where the config file leaves it blank" do
       Dir.mktmpdir do |home|
-        write_config(home, "data_directory:\n")
+        write_config(home, "directory:\n")
         _(run_under(home, '-p')[1]).must_include releases_under(File.join(home, '.local', 'share', 'abn-bulk-extract'))
       end
     end
@@ -136,7 +145,7 @@ describe "bin/abn-bulk-extract" do
 
     it "is the config file's where the file also holds a setting the library does not take" do
       Dir.mktmpdir do |home|
-        write_config(home, "keep_releases: 6\ndata_directory: #{home}/stored\n")
+        write_config(home, "keep_releases: 6\ndirectory: #{home}/stored\n")
         _(run_under(home, '-p')[1]).must_include releases_under(File.join(home, 'stored'))
       end
     end

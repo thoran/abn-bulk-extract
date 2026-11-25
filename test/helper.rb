@@ -6,14 +6,14 @@ require 'minitest/spec'
 require 'tmpdir'
 
 require 'data_gov_au'
-require 'DataGovAu/ABR'
+require 'DataGovAu/AbnBulkExtract'
 
 def fixture_path(name)
   File.join(__dir__, 'fixtures', name)
 end
 
 def config_in(directory, **settings)
-  DataGovAu::ABR::Config.new(data_directory: directory, **settings)
+  DataGovAu::AbnBulkExtract::Config.new(directory: directory, **settings)
 end
 
 # A package_show result shaped as data.gov.au's, listing the resources given.
@@ -52,7 +52,7 @@ end
 
 # A release held whole as the fetch leaves one: its zips, each holding the files given as name and text, and the catalogue entry they were found through, listing each zip at the length written.
 def whole_release(directory, date, zips)
-  release = DataGovAu::ABR::Release.new(config_in(directory), date)
+  release = DataGovAu::AbnBulkExtract::Release.new(config_in(directory), date)
   release.create_directory
   zips.each do |zip_name, files|
     Zip::File.open(File.join(release.directory, zip_name), create: true) do |zip|

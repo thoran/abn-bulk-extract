@@ -1,5 +1,15 @@
 # abn-bulk-extract/CHANGELOG
 
+## 20261125
+
+0.1.0: /DataGovAu::ABR/DataGovAu::AbnBulkExtract/, /data_directory/directory/
+
+1. ~ bin/abn-bulk-extract: Built on data_gov_au 0.4.0's DataGovAu::AbnBulkExtract. /data_directory/directory/, /-d, --data-directory/-d, --directory/, /default_data_directory()/default_directory()/: The setting names the extract's own directory, with releases/ directly beneath it, as 0.4.0's Config takes it.
+2. ~ bin/abn-bulk-extract: + check_retired_settings(), which stops the run where the config file still holds data_directory. Its value, read as the extract's own directory, would be looked in for releases which are not there, and the release retrieved again.
+3. ~ Gemfile: /~> 0.3.0/~> 0.4.0/.
+4. ~ test/abn-bulk-extract_test.rb: Releases sit directly beneath the directory given, and a config file holding data_directory stops the run. ~ test/helper.rb: Its config_in() gives the directory as directory: 14 runs.
+5. ~ README.md: DataGovAu::AbnBulkExtract, directory and -d/--directory throughout. The old setting's retirement is given. On disk shows releases/ directly beneath the directory.
+
 ## 20261124
 
 0.0.0: Fetch, compare and parse the weekly ABN bulk extract.
